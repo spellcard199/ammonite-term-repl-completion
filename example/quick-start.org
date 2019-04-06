@@ -1,0 +1,41 @@
+Have you installed Ammonite and have =amm= in your path?
+Actually you don't even need to install. You can just download and point =ammonite-term-repl-program= to it.
+Just modify the following code to point to =amm= path and eval the block with C-cC-c.
+The second line tries to re-run =ammonite-term-repl= if you didn't have it installed at startup.
+
+#+BEGIN_SRC emacs-lisp :results silent
+(setq ammonite-term-repl-program "amm_no_remote_logging")
+(ammonite-term-repl)
+#+END_SRC
+
+Before continuing you should have a buffer named "*Ammonite*" with a running Ammonite repl.
+
+If you are ready with Ammonite try to:
+    1. place the cursor at the end of the row (after the dot)
+    2. press Tab (arbitrary keybinding)
+    3. wait for prompt
+    4. press Tab again to see available completions or C-g to quit
+
+#+BEGIN_SRC scala :results silent
+scala.
+#+END_SRC
+
+The function that gets called with Tab in an src block is defined in quick-start.el. \\
+It's just a wrapper for =ammonite-term-repl-complete-indented-block-at-point=. \\
+You can read it yourself using:
+
+: M-x find-function RET scamm/org-cycle-plus-src-completion
+
+Note that if you hit the second Tab before the completing prompt appears emacs freezes and you have to hit C-g to quit. \\
+I don't know why it happens.
+
+Same thing here. Place cursor after =fromChar=. \\
+This time completion prompt should include the signature for =fromChar=.
+
+#+BEGIN_SRC scala :results silent
+(scala
+  .io
+  .Source
+  .fromChar
+#+END_SRC
+

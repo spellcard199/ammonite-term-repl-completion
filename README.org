@@ -1,0 +1,158 @@
+#+STARTUP:content
+
+* ammonite-term-repl-completion
+
+This package adds completion support to ammonite-term-repl.el.
+
+It uses the term buffer used by =ammonite-term-repl.el= to offer Ammonite completions in non-term buffers.
+
+** Why this and not one of different org-babel interfaces to different scala notebooks?
+
+- I needed a lightweight solution: ammonite-term-repl depends only on:
+    - ammonite
+    - emacs (+ packages)
+
+- I wasn't able to get the workflow I wanted from scala notebooks
+
+** Warning: not even alpha
+
+This is a hack that is already waiting it's retire time: will surely happen when/if someone writes something like a nrepl server for scala.
+
+Basic functionality is there, but there are a lot of edge cases that aren't handled properly.
+
+The thing that mostly needs work is on emacs side: when you complete the thing at point, where should it start? What are the things at point that sould be completable? These are non-questions for lisps but scala is not a lisp.
+
+Another thing that surely needs work (i.e. is bugged) is the text insertion part of completion in =ammonite-term-repl-complete-indented-block-at-point=. Currently it just looks backward for last dot, but there are also other separators (and probably also other edge cases) that should be considered.
+
+And many other issues.
+
+** Manual install
+
+1 - Install ammonite-term-repl: https://github.com/zwild/ammonite-term-repl
+
+2 - Clone this repository:
+: git clone https://github.com/spellcard199/ammonite-term-repl-completion
+
+Add to load-path the cloned directory.
+
+(add-to-list 'load-path <cloned-dir>)
+
+Put this in your init file:
+
+: (require 'ammonite-term-repl-completion)
+
+When you require ammonite-term-repl-completion, it chain requires ammonite-term-repl-also.
+
+** Usage
+
+Note that Ammonite by default tracks users. If you want to disable remote logging use the =--no-remote-logging= flag, either...:
+
+... making a wrapper launcher script and then customizing the emacs variable =ammonite-term-repl-program= to use it...:
+
+: (setq ammonite-term-repl-program <path-of-wrapper>)
+
+... or adding it as an Ammonite argument to =ammonite-term-repl-program-args=:
+
+: (add-to-list 'ammonite-term-repl-program-args "--no-remote-logging")
+
+Whan you are sure about...:
+    - ammonite-term-repl-program
+    - ammonite-term-repl-program-args
+... you can run an Ammonite repl with M-x ammonite-term-repl.
+
+In a buffer of your choice type some scala code you want to get completions for.
+
+Use the commands:
+   - ammonite-term-repl-complete-region: expectes an active region
+   - ammonite-term-repl-complete-indented-block-at-point
+
+(If it works for you) You may want to bind them to some key.
+
+If you want to write yourself a different way to...:
+    - select a region to complete 
+    - show completion output
+... the main entry point for sending input and parsing output is =ammonite-term-repl-for-string-get= :
+    1. sends string + tab to repl
+    2. gets output
+    3. calls parsing function: =ammonite-term-repl-compl--parse=
+
+=ammonite-term-repl-for-string-choose= is the function that wraps the above with completing-read:
+    1. calls =ammonite-term-repl-for-string-get=
+    2. asks user for completion choice
+
+Finally the already mentioned interactive functions...:
+   - =ammonite-term-repl-complete-region=
+   - =ammonite-term-repl-complete-indented-block-at-point=
+... wrap =ammonite-term-repl-for-string-choose= and take care of (still bad) insertion logic.
+
+** Give a try without changing your emacs config
+
+If you want to try this without modifying your emacs configuration you can:
+    1. get ammonite: https://github.com/lihaoyi/Ammonite
+    2. get cask: https://github.com/cask/cask
+    3. clone this repo
+    4. cd in the cloned directory
+    5. cask install
+    6. cask exec emacs
+    7. M-x eval-expression: =(require 'ammonite-term-repl-completion)=: this chain loads ammonite-term-repl.el
+    8. M-x ammonite-term-repl
+    9. Write some scala code in any buffer and then use: M-x ammonite-term-repl-complete-indented-block-at-point
+    10. (Hope it works)
+
+Alternatively it's included a simple quick-start script to try this in a pre-made org-mode file. \\
+The first 5 steps are the same. Then you can run in a shell:
+
+#+BEGIN_SRC shell
+sh quick-start.sh
+#+END_SRC
+
+** Caveats
+*** Multi-line completion
+
+If you try to get completion for something like this Ammonite will raise an error. \\
+
+#+BEGIN_SRC scala
+scala
+  .io
+  .Source
+  .fromChar
+#+END_SRC
+
+There is nothing we can do on emacs side without breaking something else.
+If you want to write dots like this add a "(" before the first line, like:
+
+#+BEGIN_SRC scala
+(scala
+  .io
+  .Source
+  .fromChar
+#+END_SRC
+
+The reason we can't insert "(" automatically at the beginning is that it would work in this case, but would break declarations with keywords, like: def, object... \\
+
+For example, this would raise an error... :
+
+#+BEGIN_SRC scala
+(def example =
+  "hello example".
+#+END_SRC
+
+... while this would work and show correct completions:
+
+#+BEGIN_SRC scala
+def example =
+  "hello example".
+#+END_SRC
+
+** How it works
+
+It works the duct-taped way:
+    1. Clear existing input
+    2. Send string to complete
+    3. Send Tab
+    4. Get and parse Ammonite output:
+         1. Trim lines after completions
+         2. Trim lines before signatures/completions
+         3. Get signatures, if present, and put them into a list
+         4. Parse completion candidates out of completion lines into a list
+    5. Use completion candidate list as the COLLECTION argument for =completing-read=
