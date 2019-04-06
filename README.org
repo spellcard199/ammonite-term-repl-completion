@@ -154,6 +154,14 @@ def example =
 ... freezes emacs. You C-g (exit) to regain control.
 
 *** TODO (Many others I forgot)
+** Tips
+
+If you don't want to see what happens in the repl when you ask for a completion: you can filter output out setting =ammonite-term-repl-compl-silent-repl= to =t=.
+
+: (setq ammonite-term-repl-compl-silent-repl t)
+
+Since this package is not reliable yet, I prefer to keep it visible to understand what's happening.
+
 ** How it works
 
 It works the duct-taped way:

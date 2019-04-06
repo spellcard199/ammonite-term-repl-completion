@@ -118,7 +118,10 @@
 ;;;; Variables
 
 (defvar ammonite-term-repl-compl--proc-output
-  "When asking for completions `ammonite-term-repl-compl--proc-filter' stores term output here")
+  "`ammonite-term-repl-compl--proc-filter' stores term output here")
+
+(defvar ammonite-term-repl-compl-silent-repl nil
+  "When t Ammonite completion output is filtered out and therefore hidden.")
 
 ;;;; Functions
 
@@ -410,7 +413,10 @@ Example: For this ammonite output...
         (concat ammonite-term-repl-compl--proc-output
                 (substring-no-properties
                  (ansi-color-filter-apply str))))
-  (term-emulate-terminal process str))
+  ;; Hide completions from repl when
+  ;; `ammonite-term-repl-compl-silent-repl' is t
+  (when (not ammonite-term-repl-compl-silent-repl)
+    (term-emulate-terminal process str)))
 
 ;; There are only 2 things that is reasonable to do with
 ;; `ammonite-term-repl-compl--proc-output':
@@ -475,6 +481,14 @@ Example: For this ammonite output...
             ;;  (apply 'concat
             ;;         (make-list
             ;;          (length end-of-output-comment) "\b")))
+
+            ;; When `ammonite-term-repl-compl-silent-repl' is t we
+            ;; don't want some input to remain in the prompt invisible
+            ;; to the user. Clear input.
+            (when ammonite-term-repl-compl-silent-repl
+              (dotimes (x (1+ (length (split-string to-complete))))
+                (comint-send-string ammonite-term-repl-buffer-name
+                                    "\C-u\C-a\C-u\C-a\C-k")))
             )
 
           ;; Parse output, return completions.
