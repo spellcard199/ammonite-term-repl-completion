@@ -35,23 +35,25 @@ And many other issues.
 
 Add to load-path the cloned directory.
 
-(add-to-list 'load-path <cloned-dir>)
+: (add-to-list 'load-path <cloned-dir>)
 
 Put this in your init file:
 
 : (require 'ammonite-term-repl-completion)
 
-When you require ammonite-term-repl-completion, it chain requires ammonite-term-repl-also.
+When you require =ammonite-term-repl-completion=, it chain requires =ammonite-term-repl=.
 
 ** Usage
 
-Note that Ammonite by default tracks users. If you want to disable remote logging use the =--no-remote-logging= flag, either...:
+Note that Ammonite by default tracks users. If you want to disable remote logging use the =--no-remote-logging= flag.\\
 
-... making a wrapper launcher script and then customizing the emacs variable =ammonite-term-repl-program= to use it...:
+Either...:
+
+... make a wrapper launcher script and then customizing the emacs variable =ammonite-term-repl-program= to use it...:
 
 : (setq ammonite-term-repl-program <path-of-wrapper>)
 
-... or adding it as an Ammonite argument to =ammonite-term-repl-program-args=:
+... add it as an Ammonite argument to =ammonite-term-repl-program-args=:
 
 : (add-to-list 'ammonite-term-repl-program-args "--no-remote-logging")
 
@@ -66,12 +68,14 @@ Use the commands:
    - ammonite-term-repl-complete-region: expectes an active region
    - ammonite-term-repl-complete-indented-block-at-point
 
-(If it works for you) You may want to bind them to some key.
+If it work, you may want to bind them to some key.
+
+** Extending/fixing behavior - brief overview of the main functions
 
 If you want to write yourself a different way to...:
     - select a region to complete 
     - show completion output
-... the main entry point for sending input and parsing output is =ammonite-term-repl-for-string-get= :
+... the main entry point for sending input and parsing output is =ammonite-term-repl-for-string-get=. It
     1. sends string + tab to repl
     2. gets output
     3. calls parsing function: =ammonite-term-repl-compl--parse=
@@ -85,9 +89,9 @@ Finally the already mentioned interactive functions...:
    - =ammonite-term-repl-complete-indented-block-at-point=
 ... wrap =ammonite-term-repl-for-string-choose= and take care of (still bad) insertion logic.
 
-** Give a try without changing your emacs config
+** Try without changing your emacs config
 
-If you want to try this without modifying your emacs configuration you can:
+If you want to try this package without modifying your emacs configuration you can:
     1. get ammonite: https://github.com/lihaoyi/Ammonite
     2. get cask: https://github.com/cask/cask
     3. clone this repo
@@ -99,12 +103,13 @@ If you want to try this without modifying your emacs configuration you can:
     9. Write some scala code in any buffer and then use: M-x ammonite-term-repl-complete-indented-block-at-point
     10. (Hope it works)
 
-Alternatively it's included a simple quick-start script to try this in a pre-made org-mode file. \\
-The first 5 steps are the same. Then you can run in a shell:
+Alternatively, a simple quick-start script file to try this in a pre-made org-mode file is included. The first 5 steps are the same. Then you can run in a shell...:
 
 #+BEGIN_SRC shell
 sh quick-start.sh
 #+END_SRC
+
+... and an emacs instance with a pre-made short tutorial in org-mode will pop up.
 
 ** Caveats
 *** Multi-line completion
@@ -144,6 +149,11 @@ def example =
   "hello example".
 #+END_SRC
 
+*** Asking 2 completions in rapid sequence...
+
+... freezes emacs. You C-g (exit) to regain control.
+
+*** TODO (Many others I forgot)
 ** How it works
 
 It works the duct-taped way:
