@@ -378,6 +378,16 @@ Example: For this ammonite output...
          ;; notes/errors that user may be interested into
          (parsing-notes nil)
 
+         ;; Fix for batch mode: for some reason a newline gets
+         ;; inserted after prompt in batch mode (eg tests run with
+         ;; ert-runner)
+         (amm-output (replace-regexp-in-string
+                       (regexp-quote
+                        (concat "\n" to-complete))
+                       (concat " " to-complete)
+                       amm-output
+                       nil
+                       'literal))
 
          (sig-cons-compl-lines
           (ammonite-term-repl-compl--parse--amm-output->sig-cons-compl-lines
@@ -450,9 +460,8 @@ Example: For this ammonite output...
           (ammonite-term-repl--term-clear--input-by-lines)
 
           ;; Keep output in `ammonite-term-repl-compl--proc-output' var.
-          (set-process-filter
-           (get-buffer-process ammonite-term-repl-buffer-name)
-           #'ammonite-term-repl-compl--proc-filter)
+          (set-process-filter amm-proc
+                              #'ammonite-term-repl-compl--proc-filter)
 
           (ammonite-term-repl-compl--proc-filter--reset-kept)
 
