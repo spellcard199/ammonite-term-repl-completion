@@ -536,6 +536,15 @@ Example: For this ammonite output...
               ""
             text-from-last-dot))
 
+         ;; Instead of waiting for user to press Tab: immediatly show
+         ;; completions when minibuffer gets activated by
+         ;; completing-read (below)
+         (_ (run-at-time 0.1 nil
+                         (lambda ()
+                           (while (not (window-minibuffer-p))
+                             (sleep-for 0.01))
+                           (minibuffer-complete))))
+
          (choice (funcall
                   ;; TODO: offer choice for Helm/Ivy/Ido.
                   'completing-read
