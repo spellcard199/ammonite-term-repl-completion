@@ -381,13 +381,12 @@ Example: For this ammonite output...
          ;; Fix for batch mode: for some reason a newline gets
          ;; inserted after prompt in batch mode (eg tests run with
          ;; ert-runner)
-         (amm-output (replace-regexp-in-string
-                       (regexp-quote
-                        (concat "\n" to-complete))
-                       (concat " " to-complete)
-                       amm-output
-                       nil
-                       'literal))
+         (amm-output (replace-regexp-in-string (regexp-quote
+                                                (concat "\n" to-complete))
+                                               (concat " " to-complete)
+                                               amm-output
+                                               nil
+                                               'literal))
 
          (sig-cons-compl-lines
           (ammonite-term-repl-compl--parse--amm-output->sig-cons-compl-lines
