@@ -101,4 +101,11 @@
              (:completions   . ())
              (:parsing-notes . ())))))
 
+(ert-deftest test/ammonite-term-repl-compl-for-string-get-test1 ()
+  (should (equal '((:signatures)
+                   (:completions . ("AnsiColor" "BufferedSource" "Codec" "LowPriorityCodecImplicits" "Source" "StdIn"))
+                   (:parsing-notes))
+                 (ammonite-term-repl-compl-for-string-get "scala.io.")
+           )))
+
 ;;; ammonite-term-repl-completion-test.el ends here
