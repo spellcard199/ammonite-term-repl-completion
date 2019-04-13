@@ -1,8 +1,11 @@
-;;; ammonite-term-repl-completion-test.el --- Tests for ammonite-term-repl-completion
+;;; ammonite-term-repl-completion-test.el --- Tests for ammonite-term-repl-completion -*- lexical-binding: t; -*-
 
 (require 'ammonite-term-repl-completion)
 
 ;; TODO : consider moving to buttercup instead of ert for testing.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tests that do not depend on a running REPL
 
 ;; Let's say we have defined an object:
 "object foobar {
@@ -16,10 +19,11 @@
   (should (equal
 
            (ammonite-term-repl-compl--parse
+            "foobar."
             (concat "@ foobar.\n"
                     "foobarMethod    foobarMethod2   foobarMethod3\n"
                     "@ foobar.")
-            "foobar.")
+            "/*amm-term-repl-compl-eoo*/")
            '((:signatures    . nil)
              (:completions   . ("foobarMethod" "foobarMethod2" "foobarMethod3"))
              (:parsing-notes . nil)))))
@@ -28,11 +32,11 @@
   (should (equal
 
            (ammonite-term-repl-compl--parse
-            (concat ;;"@ foobar.\n"
-                    "\n"
+            "foobar."
+            (concat "\n"
                     "foobarMethod    foobarMethod2   foobarMethod3\n"
                     "@ foobar.")
-            "foobar.")
+            "/*amm-term-repl-compl-eoo*/")
            '((:signatures    . nil)
              (:completions   . ("foobarMethod" "foobarMethod2" "foobarMethod3"))
              (:parsing-notes . nil)))))
@@ -41,12 +45,12 @@
   (should (equal
 
            (ammonite-term-repl-compl--parse
-            (concat ;;"@ foobar.foobarMethod"                       "\n"
-                    "\n"
+            "foobar.foobarMethod"
+            (concat "\n"
                     "def foobarMethod(a: String,b: String): Unit" "\n"
                     "foobarMethod2   foobarMethod3"               "\n"
                     "@ foobar.foobarMethod")
-            "foobar.foobarMethod")
+            "/*amm-term-repl-compl-eoo*/")
 
            '((:signatures    . ("def foobarMethod(a: String,b: String): Unit"))
              (:completions   . ("foobarMethod" "foobarMethod2" "foobarMethod3"))
@@ -56,11 +60,12 @@
   (should (equal
 
            (ammonite-term-repl-compl--parse
+            "foobar.foobarMethod"
             (concat "@ foobar.foobarMethod"                       "\n"
                     "def foobarMethod(a: String,b: String): Unit" "\n"
                     "foobarMethod2   foobarMethod3"               "\n"
                     "@ foobar.foobarMethod")
-            "foobar.foobarMethod")
+            "/*amm-term-repl-compl-eoo*/")
 
            '((:signatures    . ("def foobarMethod(a: String,b: String): Unit"))
              (:completions   . ("foobarMethod" "foobarMethod2" "foobarMethod3"))
@@ -73,11 +78,12 @@
 
            (ammonite-term-repl-compl--parse
             (concat "@ object Moo {" "\n"
+                    "  foobar.")
+            (concat "@ object Moo {" "\n"
                     "  foobar."      "\n"
                     "@ object Moo {" "\n"
                     "  foobar.")
-            (concat "@ object Moo {" "\n"
-                    "  foobar."))
+            "/*amm-term-repl-compl-eoo*/")
 
            '((:signatures    . ())
              (:completions   . ())
@@ -89,23 +95,24 @@
   (should (equal
 
            (ammonite-term-repl-compl--parse
-            (concat ;; "@ object Moo {" "\n"
-                    ;; "  foobar."      "\n"
-                    "\n"
+            (concat "@ object Moo {" "\n"
+                    "  foobar.")
+            (concat ""             "\n"
                     "@ object Moo {" "\n"
                     "  foobar.")
-            (concat "@ object Moo {" "\n"
-                    "  foobar."))
+            "/*amm-term-repl-compl-eoo*/")
 
            '((:signatures    . ())
              (:completions   . ())
              (:parsing-notes . ())))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tests that depend on a running REPL
+
 (ert-deftest test/ammonite-term-repl-compl-for-string-get-test1 ()
   (should (equal '((:signatures)
                    (:completions . ("AnsiColor" "BufferedSource" "Codec" "LowPriorityCodecImplicits" "Source" "StdIn"))
                    (:parsing-notes))
-                 (ammonite-term-repl-compl-for-string-get "scala.io.")
-           )))
+                 (ammonite-term-repl-compl-for-string-get "scala.io."))))
 
 ;;; ammonite-term-repl-completion-test.el ends here

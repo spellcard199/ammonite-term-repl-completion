@@ -117,6 +117,12 @@
 
 ;;;; Variables
 
+;;; UNUSED: if needed, it will used by
+;;; `ammonite-term-repl-compl--get-completion-prefix'. Not commenting
+;;; out so I don't forget to update
+;;; `ammonite-term-repl-compl--proc-filter--reset-kept'
+(defvar ammonite-term-repl-compl--proc-output-ansi "")
+
 (defvar ammonite-term-repl-compl--proc-output
   "`ammonite-term-repl-compl--proc-filter' stores term output here")
 
@@ -131,10 +137,11 @@
 ;;                             "\n  "
 ;;                             scala-code))
 
-(defun ammonite-term-repl--mk-indented (scala-code)
-  (replace-regexp-in-string "\n"
-                            "{\n  "
-                            scala-code))
+;;; UNUSED
+;; (defun ammonite-term-repl--mk-indented (scala-code)
+;;   (replace-regexp-in-string "\n"
+;;                             "{\n  "
+;; scala-code))
 
 ;;; UNUSED
 ;; (defun ammonite-term-repl-compl--parse--trim-first-n-lines
@@ -142,6 +149,28 @@
 ;;   (seq-subseq
 ;;    seq-of-lines
 ;;    n-of-lines-to-trim))
+
+;;; UNUSED
+(defun ammonite-term-repl-compl--parse--get-autocompleted
+    (to-complete
+     amm-output
+     end-of-output-comment)
+  "
+`to-complete': code we are asking completion for.
+`amm-output': ammonite output after sending Tab.
+`end-of-output-comment': suffix that gets trimmed."
+
+  (with-temp-buffer
+    (insert (string-trim-right
+             (string-trim amm-output)
+             (regexp-quote end-of-output-comment)))
+    (while (not (string-suffix-p to-complete
+                                 (buffer-substring-no-properties
+                                  (point-min)
+                                  (point))))
+      (backward-char))
+    (buffer-substring-no-properties (point)
+                                    (point-max))))
 
 (defun ammonite-term-repl-compl--parse--trim-last-n-lines
     (seq-of-lines n-of-lines-to-trim)
@@ -330,7 +359,13 @@
 
 ;; FIXME: Annotation
 ;; (ammonite-term-repl-compl--parse :: String -> String -> aList)
-(defun ammonite-term-repl-compl--parse (amm-output to-complete)
+
+;; TODO : FIX parameters in tests (quantity)
+(defun ammonite-term-repl-compl--parse
+    (to-complete
+     ;; amm-output-ansi ; Consider if we should use this to get better prefix detection when completing?
+     amm-output
+     end-of-output-comment)
   "This function work is splitted in helper functions because it's
 length would be an obstacle to reading the general flow of what's
 happening, which is pretty obvious: takes ammonite output after a tab
@@ -341,6 +376,10 @@ Helper function names start with the same prefix as this one.
 The reason the whole work requires all these steps is that parsing
 plain text in this way is a duct-taped solution waiting to be replaced
 by a better one (maybe something like LSP or a scala nrepl).
+
+`end-of-output-comment' is used only to get autocompletion that
+Ammonite inserts if it detects that there is only one possibile
+candidate.
 
 Example: For this ammonite output...
 
@@ -388,6 +427,13 @@ Example: For this ammonite output...
                                                nil
                                                'literal))
 
+         ;;; UNUSED
+         ;; (autocompleted
+         ;;  (ammonite-term-repl-compl--parse--get-autocompleted
+         ;;   to-complete
+         ;;   amm-output
+         ;;   end-of-output-comment))
+
          (sig-cons-compl-lines
           (ammonite-term-repl-compl--parse--amm-output->sig-cons-compl-lines
            amm-output
@@ -414,14 +460,22 @@ Example: For this ammonite output...
     (list
      `(:signatures    . ,signature-lines)
      `(:completions   . ,sorted-candidates-plus-self)
+     ;; `(:autocompleted . ,autocompleted) ; UNUSED
      `(:parsing-notes . ,parsing-notes))
     ))
 
 (defun ammonite-term-repl-compl--proc-filter (process str)
+
+  ;; UNUSED : TODO : consider if needed
+  ;; (setq ammonite-term-repl-compl--proc-output-ansi
+  ;;       (concat ammonite-term-repl-compl--proc-output-ansi
+  ;;               (substring-no-properties str)))
+
   (setq ammonite-term-repl-compl--proc-output
         (concat ammonite-term-repl-compl--proc-output
                 (substring-no-properties
                  (ansi-color-filter-apply str))))
+
   ;; Hide completions from repl when
   ;; `ammonite-term-repl-compl-silent-repl' is t
   (when (not ammonite-term-repl-compl-silent-repl)
@@ -433,10 +487,33 @@ Example: For this ammonite output...
 ;; 2. read
 ;; Therefore avoid using it directly.
 (defun ammonite-term-repl-compl--proc-filter--reset-kept ()
+  (setq ammonite-term-repl-compl--proc-output-ansi "")
   (setq ammonite-term-repl-compl--proc-output ""))
+
+(defun ammonite-term-repl-compl--proc-filter--get-kept-ansi ()
+  ammonite-term-repl-compl--proc-output-ansi)
 
 (defun ammonite-term-repl-compl--proc-filter--get-kept ()
   ammonite-term-repl-compl--proc-output)
+
+(defun ammonite-term-repl-compl--get-completion-prefix
+    (amm-output-with-ansi)
+  ;;; UNUSED: try living without this and see how it goes.
+  ;; Using the fact that Ammonite prints as blue the part that was
+  ;; already part of the input. Compared to backward searching for
+  ;; last dot this method would have:
+  ;; - an advantage: more precise, since does not rely on the
+  ;;   assumptions that the dot is the only completion separator (I
+  ;;   don't know).
+  ;; - a disadvantage: it depends on Ammonite colors: if colors change
+  ;;   this stops working.
+  (string-match
+   "\\(^\\| \\)\\[34m\\([^\s]*?\\)\\[39m[^s]+"
+   amm-output-with-ansi)
+  (split-string (substring-no-properties amm-output-with-ansi
+                                         (match-beginning 0)
+                                         (match-end 0))
+                "\\[[0-9][0-9]m"))
 
 (defun ammonite-term-repl-compl-for-string-get (to-complete)
 
@@ -482,14 +559,6 @@ Example: For this ammonite output...
                    (ammonite-term-repl-compl--proc-filter--get-kept))))
               (sit-for 0.01))
 
-            ;; Send backspaces to delete `end-of-output-comment' (TODO:
-            ;; consider if hiding what's happening is really desired)
-            ;; (comint-send-string
-            ;;  ammonite-term-repl-buffer-name
-            ;;  (apply 'concat
-            ;;         (make-list
-            ;;          (length end-of-output-comment) "\b")))
-
             ;; When `ammonite-term-repl-compl-silent-repl' is t we
             ;; don't want some input to remain in the prompt invisible
             ;; to the user. Clear input.
@@ -497,12 +566,13 @@ Example: For this ammonite output...
               (dotimes (x (1+ (length (split-string to-complete))))
                 (comint-send-string ammonite-term-repl-buffer-name
                                     "\C-u\C-a\C-u\C-a\C-k")))
-            )
 
-          ;; Parse output, return completions.
-          (ammonite-term-repl-compl--parse
-           (ammonite-term-repl-compl--proc-filter--get-kept)
-           to-complete))
+            ;; Parse output, return completions.
+            (ammonite-term-repl-compl--parse
+             to-complete
+             ;; (ammonite-term-repl-compl--proc-filter--get-kept-ansi) ; consider if needed
+             (ammonite-term-repl-compl--proc-filter--get-kept)
+             end-of-output-comment)))
 
       ;; Re-set old process filter (`unwind-protect' returns bodyform,
       ;; not unwindforms, so this is just for side effects).
@@ -512,8 +582,10 @@ Example: For this ammonite output...
 (defun ammonite-term-repl-compl-for-string-choose (to-complete)
   (let* ((parsed-output (ammonite-term-repl-compl-for-string-get
                          to-complete))
-         (signatures (cdr (assq :signatures  parsed-output)))
-         (candidates (cdr (assq :completions parsed-output)))
+         (signatures    (cdr (assq :signatures    parsed-output)))
+         (candidates    (cdr (assq :completions   parsed-output)))
+         ;; UNUSED
+         ;; (autocompleted (cdr (assq :autocompleted parsed-output)))
          (completion-prompt
           (concat to-complete "[...]"
                   ;; Show signatures before completions.
@@ -569,11 +641,20 @@ Example: For this ammonite output...
   (let* ((to-complete (ammonite-term-repl--thing-at-point-indented-block))
          (choice (ammonite-term-repl-compl-for-string-choose
                   to-complete))
-         (last-period (save-excursion (search-backward "." nil t))))
+         (last-dot (save-excursion (search-backward "." nil t))))
     ;; TODO: consider other separators. Look into ammonite code.
-    ;; FIXME: what to do when `last-period' (that should become
+    ;; FIXME: what to do when `last-dot' (that should become
     ;; last-separator) is nil.
-    (kill-region (+ 1 last-period) (point))
+
+    ;; if `last-dot' is before the beginning of `to-complete' it's not
+    ;; a dot that we are completing on.
+    (when (> (length to-complete) (- (point) last-dot) )
+      (kill-region (+ 1 last-dot) (point)))
+
+    (when (string-match-p "[.]" choice)
+      ;; Ammonite did a deep completion: we replace all `to-complete'
+      (kill-region (- (point) (length to-complete))
+                   (point)))
     (insert choice)))
 
 (defun ammonite-term-repl-complete-region (beg end)
@@ -581,14 +662,17 @@ Example: For this ammonite output...
   (let* ((to-complete (buffer-substring-no-properties beg end))
          (choice (ammonite-term-repl-compl-for-string-choose
                   to-complete))
-         (last-period (save-excursion
-                        (goto-char end)
-                        (search-backward "." nil t))))
+         (last-dot (save-excursion
+                     (goto-char end)
+                     (search-backward "." nil t))))
     ;; TODO: consider other separators. Look into ammonite code.
-    ;; FIXME: what to do when `last-period' (that should become
+    ;; FIXME: what to do when `last-dot' (that should become
     ;; last-separator) is nil.
     (goto-char end)
-    (kill-region (+ 1 last-period) (point))
+    ;; if `last-dot' is before the beginning of `to-complete' it's not
+    ;; a dot that we are completing on.
+    (when (> (length to-complete) (- (point) last-dot))
+      (kill-region (+ 1 last-dot) (point)))
     (insert choice)))
 
 ;;;; Footer

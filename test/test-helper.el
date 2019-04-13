@@ -1,4 +1,4 @@
-;;; test-helper.el --- Helpers for ammonite-term-repl-completion-test.el
+;;; test-helper.el --- Helpers for ammonite-term-repl-completion-test.el -*- lexical-binding: t; -*-
 
 (require 'ammonite-term-repl)
 
@@ -43,13 +43,11 @@
                      (test/ammonite-term-repl-eval--proc-filter--get-kept))))
             (sleep-for 0.1))
           ;; Clear previous input, so we are ready to send other things.
-          (comint-send-string ammonite-term-repl-buffer-name "\C-a\C-u\C-k")
-          )
+          (comint-send-string ammonite-term-repl-buffer-name "\C-a\C-u\C-k"))
 
       ;; Restore default process filter
       (set-process-filter amm-proc
-                          default-amm-proc-filter)
-      )))
+                          default-amm-proc-filter))))
 
 (message "Starting Ammonite...")
 (test/start-ammonite)
