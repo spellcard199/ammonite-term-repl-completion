@@ -204,18 +204,28 @@
 
 (defun ammonite-term-repl-compl--parse--separate-sig-from-completion-lines
     (sig-and-completion-lines)
-  (let* ((maybe-sig-line-p
-          ;; Signature Lines must contain:
-          ;; - no starting whitespaces
-          ;; - no consecutive spaces
-          ;; - at least 1 space
-          ;; (false positive: ammonite echoing unindented input: handled in
-          ;; `ammonite-term-repl-compl--parse--amm-output->sig-cons-compl-lines'
-          ;; at `ammonite-term-repl-compl--parse--trim-last-n-lines').
+  (let* ((maybe-sig-p
           (lambda (line)
+            ;; Signatures must contain:
+            ;; - no starting whitespaces
+            ;; - no consecutive spaces
+            ;; - at least 1 space
+            ;; (false positive: ammonite echoing unindented input:
+            ;; handled in
+            ;; `ammonite-term-repl-compl--parse--amm-output->sig-cons-compl-lines'
+            ;; at
+            ;; `ammonite-term-repl-compl--parse--trim-last-n-lines').
             (and (not (string-prefix-p " " line))
                  (not (string-match-p "  " line))
                  (string-match-p " " line))))
+
+         (maybe-sig-line-p
+          (lambda (line)
+            (let ((possible-sigs (split-string line "  " t)))
+              (not
+               (member nil
+                       (mapcar (lambda (x) (funcall maybe-sig-p x))
+                               possible-sigs))))))
 
          (maybe-compl-line-p
           ;; Completion Lines: contain either 0 or multiple
@@ -243,13 +253,13 @@
              (member line signature-lines-with-eol))
            sig-and-completion-lines))
 
-         ;; Remove trailing separator char
+         ;; Remove trailing 
          (signature-lines
           (mapcar (lambda (line)
                     (string-remove-suffix "" line))
                   signature-lines-with-eol))
 
-         ;; Remove trailing separator char
+         ;; Remove trailing 
          (completion-lines
           (mapcar (lambda (line)
                     (string-remove-suffix "" line))
@@ -265,20 +275,22 @@
           (length
            (split-string to-complete "\n")))
 
-         ;; Trim lines before and after signatures and completions
+         ;; Trim input lines before and after signatures and
+         ;; completions.
 
-         ;; After completions: The same input we inserted is
-         ;; redisplayed by ammonite after completions, +/- ammonite
-         ;; autocompletion (which wouldn't contain a newline): so we
-         ;; know we have to trim the number of lines of `to-complete'
+         ;; Trim input lines after completions: The same input we
+         ;; inserted is redisplayed by ammonite after completions, +/-
+         ;; ammonite autocompletion (which wouldn't contain a
+         ;; newline): so we know we have to trim the number of lines
+         ;; of `to-complete'
          (lines-without-reinserted-input
           (ammonite-term-repl-compl--parse--trim-last-n-lines
            lines
            n-of-lines-of-to-complete))
 
-         ;; Before completions: depending on how you implemented
-         ;; `ammonite-term-repl-compl-for-string-get' you could get
-         ;; either:
+         ;; Trim input lines before completions: depending on how you
+         ;; implemented `ammonite-term-repl-compl-for-string-get' you
+         ;; could get either:
          ;; - an empty line
          ;; - input you are asking completion for
          ;; To cover also for the second case here we are:
@@ -363,7 +375,8 @@
 ;; TODO : FIX parameters in tests (quantity)
 (defun ammonite-term-repl-compl--parse
     (to-complete
-     ;; amm-output-ansi ; Consider if we should use this to get better prefix detection when completing?
+     ;; amm-output-ansi ; Consider if we should use this to get better
+     ;; prefix detection when completing?
      amm-output
      end-of-output-comment)
   "This function work is splitted in helper functions because it's
@@ -420,12 +433,13 @@ Example: For this ammonite output...
          ;; Fix for batch mode: for some reason a newline gets
          ;; inserted after prompt in batch mode (eg tests run with
          ;; ert-runner)
-         (amm-output (replace-regexp-in-string (regexp-quote
-                                                (concat "\n" to-complete))
-                                               (concat " " to-complete)
-                                               amm-output
-                                               nil
-                                               'literal))
+         (amm-output (replace-regexp-in-string
+                      (regexp-quote
+                       (concat "\n" to-complete))
+                      (concat " " to-complete)
+                      amm-output
+                      nil
+                      'literal))
 
          ;;; UNUSED
          ;; (autocompleted
@@ -440,6 +454,12 @@ Example: For this ammonite output...
            to-complete))
 
          (signature-lines  (car sig-cons-compl-lines))
+
+         (signatures (apply
+                      'append
+                      (mapcar (lambda (line)
+                                (split-string line "  " t))
+                              signature-lines)))
 
          (completion-lines (cdr sig-cons-compl-lines))
          (self (if signature-lines
@@ -458,7 +478,7 @@ Example: For this ammonite output...
                                               sorted-candidates)))
 
     (list
-     `(:signatures    . ,signature-lines)
+     `(:signatures    . ,signatures)
      `(:completions   . ,sorted-candidates-plus-self)
      ;; `(:autocompleted . ,autocompleted) ; UNUSED
      `(:parsing-notes . ,parsing-notes))

@@ -106,6 +106,23 @@
              (:completions   . ())
              (:parsing-notes . ())))))
 
+(ert-deftest ammonite-term-repl-compl--parse-test4a ()
+  (should
+   (equal
+
+    (ammonite-term-repl-compl--parse
+     "\"yuppii\".substring"
+     (concat
+      "\n"
+      "def substring(x$1: Int): String                  def substring(x$1: Int,x$2: Int): String\n"
+      "@ \"yuppi\".substring/*amm-term-repl-compl-eoo*/ ")
+     "/*amm-term-repl-compl-eoo*/")
+
+    '((:signatures . ("def substring(x$1: Int): String"
+                     "def substring(x$1: Int,x$2: Int): String"))
+     (:completions . ("substring"))
+     (:parsing-notes)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tests that depend on a running REPL
 
@@ -114,5 +131,12 @@
                    (:completions . ("AnsiColor" "BufferedSource" "Codec" "LowPriorityCodecImplicits" "Source" "StdIn"))
                    (:parsing-notes))
                  (ammonite-term-repl-compl-for-string-get "scala.io."))))
+
+
+
+
+
+
+
 
 ;;; ammonite-term-repl-completion-test.el ends here
