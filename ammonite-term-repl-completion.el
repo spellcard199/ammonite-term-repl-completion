@@ -650,36 +650,20 @@ Example: For this ammonite output...
                   completion-initial-input)))
     choice))
 
-(defun ammonite-term-repl--thing-at-point-indented-block ()
+(defun ammonite-term-repl--bounds-of-thing-at-point-indented-block ()
   (let ((beg (save-excursion (re-search-backward "^[^\s]")))
         (end (point)))
-    (buffer-substring-no-properties beg end)))
+    `(,beg . ,end)))
+
+;; UNUSED
+;; (defun ammonite-term-repl--thing-at-point-indented-block ()
+;;   (let (bounds
+;;         (ammonite-term-repl--bounds-of-thing-at-point-indented-block))
+;;     (buffer-substring-no-properties (car bounds) (cdr bounds))))
 
 ;;;;; Commands
 
-;; TODO: complete different things at point.
 ;;;###autoload
-(defun ammonite-term-repl-complete-indented-block-at-point ()
-  (interactive)
-  (let* ((to-complete (ammonite-term-repl--thing-at-point-indented-block))
-         (choice (ammonite-term-repl-compl-for-string-choose
-                  to-complete))
-         (last-dot (save-excursion (search-backward "." nil t))))
-    ;; TODO: consider other separators. Look into ammonite code.
-    ;; FIXME: what to do when `last-dot' (that should become
-    ;; last-separator) is nil.
-
-    ;; if `last-dot' is before the beginning of `to-complete' it's not
-    ;; a dot that we are completing on.
-    (when (> (length to-complete) (- (point) last-dot) )
-      (kill-region (+ 1 last-dot) (point)))
-
-    (when (string-match-p "[.]" choice)
-      ;; Ammonite did a deep completion: we replace all `to-complete'
-      (kill-region (- (point) (length to-complete))
-                   (point)))
-    (insert choice)))
-
 (defun ammonite-term-repl-complete-region (beg end)
   (interactive "r")
   (let* ((to-complete (buffer-substring-no-properties beg end))
@@ -696,7 +680,26 @@ Example: For this ammonite output...
     ;; a dot that we are completing on.
     (when (> (length to-complete) (- (point) last-dot))
       (kill-region (+ 1 last-dot) (point)))
+
+    (when (string-match-p "[.]" choice)
+      ;; Ammonite did a deep completion: we replace all `to-complete'
+      (kill-region (- (point) (length to-complete))
+                   (point)))
+
     (insert choice)))
+
+;; TODO: complete different things at point.
+;;;###autoload
+(defun ammonite-term-repl-complete-indented-block-at-point ()
+  (interactive)
+  (let* ((bounds-of-indented-block
+          (ammonite-term-repl--bounds-of-thing-at-point-indented-block))
+         (beg-of-indented-block (car bounds-of-indented-block))
+         (end-of-indented-block (cdr bounds-of-indented-block)))
+
+    (ammonite-term-repl-complete-region
+     beg-of-indented-block
+     end-of-indented-block)))
 
 ;;;; Footer
 
