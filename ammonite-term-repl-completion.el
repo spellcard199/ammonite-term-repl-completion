@@ -552,7 +552,9 @@ Example: For this ammonite output...
     (unwind-protect
         (progn
 
-          ;; Delete lines until amm prompt is reached.
+          ;; Delete lines until amm prompt is reached. On my laptop
+          ;; deleting lines is slightly faster than sending an
+          ;; interrupt, "\C-c".
           (ammonite-term-repl--term-clear--input-by-lines)
 
           ;; Keep output in `ammonite-term-repl-compl--proc-output' var.
@@ -620,7 +622,8 @@ Example: For this ammonite output...
           (car (last (split-string to-complete "\\."))))
 
          (completion-initial-input
-          (if (or (string-suffix-p "." to-complete)
+          (if (or (not (string-match-p "\\." to-complete)) ; deep completion
+                  (string-suffix-p "." to-complete)
                   ;; If last dot is before the start of our thing to
                   ;; complete it's not useful to get an initial input.
                   (> (length text-from-last-dot)
