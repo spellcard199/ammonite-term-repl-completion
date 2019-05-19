@@ -201,15 +201,17 @@
   (let* (;; Remove prefix
          (no-prefix (thread-last sig
                          (string-remove-prefix "abstract " )
+                         (string-remove-prefix "override " )
                          (string-remove-prefix "def " )
                          (string-remove-prefix "class " )
                          (string-remove-prefix "object " )
                          (string-remove-prefix "trait " )))
          ;; Remove suffix:
-         ;; - for methods: name is separated by arglist by "("
+         ;; - for methods: name is separated from arglist by "(" and
+         ;;   from return type by ":"
          ;; - for classes, etc... : name is separated by "extends" or
          ;;   other words by a white space
-         (name (car (split-string no-prefix "[( ]"))))
+         (name (car (split-string no-prefix "[(: ]"))))
     name))
 
 (defun ammonite-term-repl-compl--parse--separate-sig-from-completion-lines
