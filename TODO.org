@@ -1,0 +1,25 @@
+*** Are there other completion separators besides the dot?
+    :PROPERTIES:
+    :CUSTOM_ID:       df1c69eb-2420-4241-8330-7f13bf7d1aeb
+    :END:
+
+(If not, nvm.) \\
+If yes, which are the other completion separators?
+
+I think we can get a clue of what ammonite is doing to get completions looking inside [[https://github.com/lihaoyi/Ammonite/blob/master/amm/interp/src/main/scala/ammonite/interp/Pressy.scala]].
+
+More precisely, around where it says:
+
+#+BEGIN_EXAMPLE scala
+      for {
+        member <- pressy.RootClass.typeSignature.members.toList
+        sym <- rec(member)
+        // sketchy name munging because I don't know how to do this properly
+        // Note lack of back-quoting support.
+        strippedName = sym.nameString.stripPrefix("package$").stripSuffix("$")
+        if strippedName.startsWith(name)
+        (pref, _) = sym.fullNameString.splitAt(sym.fullNameString.lastIndexOf('.') + 1)
+        out = pref + strippedName
+        if out != ""
+      } yield (out, None)
+#+END_EXAMPLE
