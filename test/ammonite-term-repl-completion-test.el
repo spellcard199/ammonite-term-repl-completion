@@ -71,7 +71,7 @@
              (:completions   . ("foobarMethod" "foobarMethod2" "foobarMethod3"))
              (:parsing-notes . nil)))))
 
-(ert-deftest ammonite-term-repl-compl--parse-test3b ()
+(ert-deftest ammonite-term-repl-compl--parse-test3a ()
   ;; Ammonite does not support completing inside {} blocks, so when we
   ;; use tab there we get our input echoed without completions.
   (should (equal
@@ -111,17 +111,45 @@
    (equal
 
     (ammonite-term-repl-compl--parse
+
      "\"yuppii\".substring"
+
      (concat
       "\n"
       "def substring(x$1: Int): String                  def substring(x$1: Int,x$2: Int): String\n"
       "@ \"yuppi\".substring/*amm-term-repl-compl-eoo*/ ")
+
      "/*amm-term-repl-compl-eoo*/")
 
     '((:signatures . ("def substring(x$1: Int): String"
-                     "def substring(x$1: Int,x$2: Int): String"))
-     (:completions . ("substring"))
-     (:parsing-notes)))))
+                      "def substring(x$1: Int,x$2: Int): String"))
+      (:completions . ("substring"))
+      (:parsing-notes)))))
+
+(ert-deftest ammonite-term-repl-compl--parse-test5a ()
+  (should
+   (equal
+    (ammonite-term-repl-compl--parse
+
+     "javax.xml.bind.annotation.XmlElement"
+
+     "
+class XmlElement extends Annotation with ClassfileAnnotation with Annotation
+object XmlElement
+XmlElementDecl      XmlElementRefs      XmlElements
+XmlElementRef       XmlElementWrapper
+@ javax.xml.bind.annotation.XmlElement/*amm-term-repl-compl-eoo*/ "
+
+     "/*amm-term-repl-compl-eoo*/"
+     )
+
+    '((:signatures . ("class XmlElement extends Annotation with ClassfileAnnotation with Annotation"
+                      "object XmlElement"))
+      (:completions . ("XmlElement" "XmlElementDecl" "XmlElementRef"
+                       "XmlElementRefs" "XmlElementWrapper" "XmlElements"))
+      (:parsing-notes)))))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tests that depend on a running REPL
