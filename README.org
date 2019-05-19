@@ -167,7 +167,7 @@ def example =
 
 *** Asking 2 completions in rapid sequence...
 
-... freezes emacs. C-g (exit) to regain control.
+... freezes emacs. C-g (Quit) to regain control.
 
 *** TODO (Many others I forgot)
 ** Tips
