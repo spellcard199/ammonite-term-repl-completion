@@ -197,10 +197,20 @@
                     (string-prefix-p " " line))
                   seq-of-lines))
 
-(defun ammonite-term-repl-compl--parse--sig->fun-name (sig)
-  (car (split-string
-        (string-remove-prefix "def " sig)
-        "(")))
+(defun ammonite-term-repl-compl--parse--sig->name (sig)
+  (let* (;; Remove prefix
+         (no-prefix (thread-last sig
+                         (string-remove-prefix "abstract " )
+                         (string-remove-prefix "def " )
+                         (string-remove-prefix "class " )
+                         (string-remove-prefix "object " )
+                         (string-remove-prefix "trait " )))
+         ;; Remove suffix:
+         ;; - for methods: name is separated by arglist by "("
+         ;; - for classes, etc... : name is separated by "extends" or
+         ;;   other words by a white space
+         (name (car (split-string no-prefix "[( ]"))))
+    name))
 
 (defun ammonite-term-repl-compl--parse--separate-sig-from-completion-lines
     (sig-and-completion-lines)
@@ -253,13 +263,13 @@
              (member line signature-lines-with-eol))
            sig-and-completion-lines))
 
-         ;; Remove trailing 
+         ;; Remove trailing ""
          (signature-lines
           (mapcar (lambda (line)
                     (string-remove-suffix "" line))
                   signature-lines-with-eol))
 
-         ;; Remove trailing 
+         ;; Remove trailing ""
          (completion-lines
           (mapcar (lambda (line)
                     (string-remove-suffix "" line))
@@ -317,25 +327,7 @@
 
 (defun ammonite-term-repl-compl--parse--completion-lines->sorted-candidates
     (completion-lines)
-  (let* (
-         ;; Counting number of columns: used for sorting below at
-         ;; the `transposed-list' let binding.
-         (n-of-cols (length
-                     (split-string
-                      ;; Ensuring `split-string' does not get a `nil'
-                      ;; as argument; it would raise an error.
-                      (if completion-lines
-                          ;; If there are at least 2 lines prefer
-                          ;; the second: sometimes the first
-                          ;; column of the first line is empty?
-                          (if (cadr completion-lines)
-                              (cadr completion-lines)
-                            (car completion-lines))
-                        "")
-                      "\s"
-                      t)))
-
-         ;; `splitted-completion-lines' is a list of lists: inner lists
+  (let* (;; `splitted-completion-lines' is a list of lists: inner lists
          ;; are the splitted lines printed by ammonite completion.
          ;; Therefore strings inside the inner lists are completion
          ;; candidates.
@@ -343,6 +335,23 @@
           (mapcar (lambda (line)
                     (split-string line "\s" t))
                   completion-lines))
+
+         ;; Counting number of columns: used for sorting below at the
+         ;; `transposed-list' let binding.  If we fail to recognize
+         ;; the correct number of columns, candidates in the
+         ;; un-counted columns are lost
+         ;; TODO: giving an excess number of columns seems to work
+         ;; anyway. Is it true? If yes, should we just give an
+         ;; arbitrary, relatively large number instead of counting?
+         (cols-per-line (mapcar 'length splitted-completion-lines))
+         ;; The if on `cols-per-line' accounts for the case in which
+         ;; there are no completions:
+         ;; 1. completion-lines: is empty
+         ;; 2. cols-per-line: is empty
+         ;; 3. `max' applied to an empty list raises an error
+         (n-of-cols (if cols-per-line
+                        (apply 'max cols-per-line)
+                      0))
 
          ;; `transposed-list' is a list of lists: inner lists are the
          ;; columns printed by ammonite completion.
@@ -462,24 +471,27 @@ Example: For this ammonite output...
                               signature-lines)))
 
          (completion-lines (cdr sig-cons-compl-lines))
-         (self (if signature-lines
-                   (list
-                    (ammonite-term-repl-compl--parse--sig->fun-name
-                     (car signature-lines)))
-                 nil))
+         (already-matching
+          (if signature-lines
+              (list
+               (ammonite-term-repl-compl--parse--sig->name
+                (car signature-lines)))
+            nil))
 
          (sorted-candidates
           (ammonite-term-repl-compl--parse--completion-lines->sorted-candidates
            completion-lines))
 
-         ;; If `to-complete' already matches a function definition we
-         ;; want it included.
-         (sorted-candidates-plus-self (append self
-                                              sorted-candidates)))
+         ;; If `to-complete' already matches a definition we want it
+         ;; included. already-matching gets appended completion candidates below, at
+         ;; `sorted-candidates-plus-already-matching'
+         (sorted-candidates-plus-already-matching
+          (append already-matching
+                  sorted-candidates)))
 
     (list
      `(:signatures    . ,signatures)
-     `(:completions   . ,sorted-candidates-plus-self)
+     `(:completions   . ,sorted-candidates-plus-already-matching)
      ;; `(:autocompleted . ,autocompleted) ; UNUSED
      `(:parsing-notes . ,parsing-notes))
     ))
@@ -648,7 +660,8 @@ Example: For this ammonite output...
                   nil
                   nil
                   completion-initial-input)))
-    choice))
+    (cons (if (member choice candidates) t nil)
+          choice)))
 
 (defun ammonite-term-repl--bounds-of-thing-at-point-indented-block ()
   (let ((beg (save-excursion (re-search-backward "^[^\s]")))
@@ -667,11 +680,14 @@ Example: For this ammonite output...
 (defun ammonite-term-repl-complete-region (beg end)
   (interactive "r")
   (let* ((to-complete (buffer-substring-no-properties beg end))
-         (choice (ammonite-term-repl-compl-for-string-choose
-                  to-complete))
+         (completion-res (ammonite-term-repl-compl-for-string-choose
+                          to-complete))
+         (choice (cdr completion-res))
+         (choice-in-candidates (car completion-res))
          (last-dot (save-excursion
                      (goto-char end)
                      (search-backward "." nil t))))
+
     ;; TODO: consider other separators. Look into ammonite code.
     ;; FIXME: what to do when `last-dot' (that should become
     ;; last-separator) is nil.
@@ -681,8 +697,15 @@ Example: For this ammonite output...
     (when (> (length to-complete) (- (point) last-dot))
       (kill-region (+ 1 last-dot) (point)))
 
-    (when (string-match-p "[.]" choice)
-      ;; Ammonite did a deep completion: we replace all `to-complete'
+    (when (and
+           ;; There are 2 cases in which `choice' can contain a dot:
+           ;; - Ammonite deep completion: in this case we want to
+           ;;   replace all `to-complete'
+           ;; - User has typed something that's not in candidates: In
+           ;;   this case the he is expecting previous not text to be
+           ;;   replaced.
+           (string-match-p "[.]" choice)
+           choice-in-candidates)
       (kill-region (- (point) (length to-complete))
                    (point)))
 
