@@ -8,11 +8,10 @@ It uses the term buffer used by =ammonite-term-repl.el= to offer Ammonite comple
 
 ** Why this and not one of different org-babel interfaces to different scala notebooks?
 
+- I wasn't able to get the workflow I wanted from scala notebooks
 - I needed a lightweight solution: ammonite-term-repl depends only on:
     - ammonite
     - emacs (+ packages)
-
-- I wasn't able to get the workflow I wanted from scala notebooks
 
 ** Warning: not even alpha
 
@@ -20,11 +19,12 @@ This is a hack that is already waiting it's retire time: will surely happen when
 
 Basic functionality is there, but there are a lot of edge cases that aren't handled properly.
 
-The thing that mostly needs work is on emacs side: when you complete the thing at point, where should it start? What are the things at point that sould be completable? These are non-questions for lisps but scala is not a lisp.
+The thing that mostly needs work is on emacs side: when you complete the thing at point, where should it start? What are the things at point that sould be completable? These are non-questions for lisps but scala syntax is less trivial than lisps and I don't master it.
 
-Another thing that surely needs work (i.e. is bugged) is the text insertion part of completion in =ammonite-term-repl-complete-indented-block-at-point=. Currently it just looks backward for last dot, but there are also other separators (and probably also other edge cases) that should be considered.
+Another thing that surely needs work (i.e. may be bugged) is the text insertion done by =ammonite-term-repl-complete-region=. 
+One of the problems with text insertion is that currently it just looks backward for the last dot, but maybe (I don't know) there are also other separators that should be considered. (See [[file:TODO.org::#df1c69eb-2420-4241-8330-7f13bf7d1aeb][TODO.org]])
 
-And many other issues.
+And probably there are edge cases text insertion doesn't know about.
 
 ** Manual install
 
@@ -45,49 +45,65 @@ When you require =ammonite-term-repl-completion=, it chain requires =ammonite-te
 
 ** Usage
 
-Note that Ammonite by default tracks users. If you want to disable remote logging use the =--no-remote-logging= flag.\\
+Note that Ammonite's default is to track usage. If you want to disable remote logging use the =--no-remote-logging= flag.\\
+If you want to disable tracking there are 2 simple ways:
 
-Either...:
-
-... make a wrapper launcher script and then customizing the emacs variable =ammonite-term-repl-program= to use it...:
-
+1 - make a wrapper launcher script and then customize the emacs variable =ammonite-term-repl-program= to use it:
 : (setq ammonite-term-repl-program <path-of-wrapper>)
 
-... add it as an Ammonite argument to =ammonite-term-repl-program-args=:
-
+2 - add "--no-remote-logging" to =ammonite-term-repl-program-args=:
 : (add-to-list 'ammonite-term-repl-program-args "--no-remote-logging")
 
-Whan you are sure about...:
-    - ammonite-term-repl-program
-    - ammonite-term-repl-program-args
-... you can run an Ammonite repl with M-x ammonite-term-repl.
+When you are sure these variables...:
+    - =ammonite-term-repl-program=
+    - =ammonite-term-repl-program-args=
+... match your preferences, you can run an Ammonite repl with =M-x ammonite-term-repl=.
 
 In a buffer of your choice type some scala code you want to get completions for.
 
-Use the commands:
-   - ammonite-term-repl-complete-region: expectes an active region
-   - ammonite-term-repl-complete-indented-block-at-point
+To actually get completions use the commands:
+   - =ammonite-term-repl-complete-region=: expectes an active region
+   - =ammonite-term-repl-complete-indented-block-at-point= (implementation detail: calls =ammonite-term-repl-complete-region=)
 
-If it work, you may want to bind them to some key.
+(if they work) You may want to bind them to some key.
 
 ** Extending/fixing behavior - brief overview of the main functions
 
 If you want to write yourself a different way to...:
     - select a region to complete 
     - show completion output
-... the main entry point for sending input and parsing output is =ammonite-term-repl-for-string-get=. It
-    1. sends string + tab to repl
+... the main entry point for sending input and parsing output is =ammonite-term-repl-compl-for-string-get=. It takes a string to get completion for and then:
+    1. sends to the repl: the string + tab
     2. gets output
     3. calls parsing function: =ammonite-term-repl-compl--parse=
 
-=ammonite-term-repl-for-string-choose= is the function that wraps the above with completing-read:
+=ammonite-term-repl-for-string-choose= is the function that wraps the above with =completing-read=:
     1. calls =ammonite-term-repl-for-string-get=
-    2. asks user for completion choice
+    2. asks user for completion choice with =completing-read=
 
-Finally the already mentioned interactive functions...:
-   - =ammonite-term-repl-complete-region=
+Finally, the 2 interactive functions (already mentioned in [[*Usage]["Usage"]]) wrap =ammonite-term-repl-for-string-choose=:
+
+   - =ammonite-term-repl-complete-region=: main interactive entry point
+       1. Calls =ammonite-term-repl-for-string-choose=
+       2. Takes care of (still rudimentary) insertion logic
+
    - =ammonite-term-repl-complete-indented-block-at-point=
-... wrap =ammonite-term-repl-for-string-choose= and take care of (still bad) insertion logic.
+       1. Gets region corresponding to indented block at point
+       2. Passes that region to =ammonite-term-repl-complete-region=
+
+Let's recap following what happens when =ammonite-term-repl-complete-indented-block-at-point= or =ammonite-term-repl-complete-region= are called:
+
+1. =ammonite-term-repl-complete-indented-block-at-point= (interactive) calls =ammonite-term-repl-complete-region= (interactive)
+1. =ammonite-term-repl-complete-region= (interactive) then:
+     1. gets and passes region substring to =ammonite-term-repl-for-string-choose=
+     2. =ammonite-term-repl-for-string-choose=:
+          1. gets signature and candidates using =ammonite-term-repl-for-string-get=, which:
+               1. sends string to complete to ammonite repl
+               2. calls parsing function =ammonite-term-repl-compl--parse=
+               3. returns signatures and candidates
+          2. asks user for choice using =completing-read=, an emacs builtin
+          3. returns user completion choice
+     3. inserts completion choice
 
 ** Try without changing your emacs config
 
@@ -114,7 +130,7 @@ sh quick-start.sh
 ** Caveats
 *** Multi-line completion
 
-If you try to get completion for something like this Ammonite will raise an error. \\
+If you try to get completion for something like this Ammonite raises an error. \\
 
 #+BEGIN_SRC scala
 scala
@@ -124,7 +140,7 @@ scala
 #+END_SRC
 
 There is nothing we can do on emacs side without breaking something else.
-If you want to write dots like this add a "(" before the first line, like:
+If you want to use this style add a "(" before the first line:
 
 #+BEGIN_SRC scala
 (scala
@@ -133,7 +149,7 @@ If you want to write dots like this add a "(" before the first line, like:
   .fromChar
 #+END_SRC
 
-The reason we can't insert "(" automatically at the beginning is that it would work in this case, but would break declarations with keywords, like: def, object... \\
+The reason we can't insert "(" automatically at the beginning is that it would work in this case, but would break declarations with keywords like =def=, =object=, etc... \\
 
 For example, this would raise an error... :
 
@@ -151,16 +167,16 @@ def example =
 
 *** Asking 2 completions in rapid sequence...
 
-... freezes emacs. You C-g (exit) to regain control.
+... freezes emacs. C-g (exit) to regain control.
 
 *** TODO (Many others I forgot)
 ** Tips
 
-If you don't want to see what happens in the repl when you ask for a completion: you can filter output out setting =ammonite-term-repl-compl-silent-repl= to =t=.
+If you don't want to see what happens in the repl when you ask for a completion you can filter the output out setting =ammonite-term-repl-compl-silent-repl= to =t=.
 
 : (setq ammonite-term-repl-compl-silent-repl t)
 
-Since this package is not reliable yet, I prefer to keep it visible to understand what's happening.
+Since this package is not reliable yet, I prefer to keep output visible to understand what's happening.
 
 ** How it works
 
