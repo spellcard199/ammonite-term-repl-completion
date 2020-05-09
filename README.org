@@ -1,6 +1,11 @@
 #+STARTUP:content
 
-* ammonite-term-repl-completion
+* ammonite-term-repl-completion (deprecated)
+** Update 2020-05-09: Project is Deprecated
+
+Since I've stopped using it myself, this project is officially deprecated (I'm using [[https://github.com/almond-sh/almond][Almond]] + [[https://github.com/dzop/emacs-jupyter][emacs-jupyter]] now).
+
+** Description
 
 This package adds completion support to ammonite-term-repl.el.
 
